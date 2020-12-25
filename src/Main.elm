@@ -8,6 +8,7 @@ import Html.Events exposing (onClick, onInput)
 import Http
 import Json.Decode exposing (Decoder, field, string)
 import Platform.Cmd exposing (Cmd)
+import Html exposing (h2)
 
 
 main : Program () Model Msg
@@ -26,7 +27,7 @@ toApi url =
 
 init : () -> ( Model, Cmd Msg )
 init _ =
-    ( { monstersList = [] }
+    ( { monstersList = [], currentMonster = Nothing }
     , Http.get
         { url = toApi "/api/monsters"
         , expect = Http.expectJson GotMonstersList monstersDecoder
@@ -49,9 +50,31 @@ update msg model =
                 Ok monstersList ->
                     ( { model | monstersList = monstersList }, Cmd.none )
 
+        GetMonster url ->
+            ( model
+            , Http.get
+                { url = toApi url
+                , expect = Http.expectJson GotMonster monsterDecoder
+                }
+            )
+
+        GotMonster result ->
+            case result of
+                Err x ->
+                    let
+                        y =
+                            Debug.log "Errr" x
+                    in
+                    ( model, Cmd.none )
+
+                Ok monster ->
+                    ( { model | currentMonster = Just monster }, Cmd.none )
+
 
 type alias Model =
-    { monstersList : List MonsterHeader }
+    { monstersList : List MonsterHeader
+    , currentMonster : Maybe Monster
+    }
 
 
 type alias MonsterHeader =
@@ -61,22 +84,37 @@ type alias MonsterHeader =
     }
 
 
+type alias Monster =
+    { name : String
+    , size : String
+    }
+
+
 type Msg
     = GotMonstersList (Result Http.Error (List MonsterHeader))
+    | GetMonster String
+    | GotMonster (Result Http.Error Monster)
 
 
 monstersDecoder : Decoder (List MonsterHeader)
 monstersDecoder =
     field "results"
-        (Json.Decode.list monsterDecoder)
+        (Json.Decode.list monsterHeaderDecoder)
 
 
-monsterDecoder : Decoder MonsterHeader
-monsterDecoder =
+monsterHeaderDecoder : Decoder MonsterHeader
+monsterHeaderDecoder =
     Json.Decode.map3 MonsterHeader
         (field "index" string)
         (field "name" string)
+        (field "url" string)
+
+
+monsterDecoder : Decoder Monster
+monsterDecoder =
+    Json.Decode.map2 Monster
         (field "name" string)
+        (field "size" string)
 
 
 
@@ -95,10 +133,25 @@ subscriptions model =
 view : Model -> Html Msg
 view model =
     div []
-        [ div [] (List.map viewMonsterHeader model.monstersList)
+        [ div []
+            [ case model.currentMonster of
+                Nothing ->
+                    text "No monsters loaded..."
+
+                Just monster ->
+                    viewMonster monster
+            , div [] (List.map viewMonsterHeader model.monstersList)
+            ]
         ]
 
 
-viewMonsterHeader : MonsterHeader -> Html msg
+viewMonsterHeader : MonsterHeader -> Html Msg
 viewMonsterHeader { index, name, url } =
-    p [ Html.Attributes.title index ] [ text name ]
+    p [ Html.Attributes.title index, onClick (GetMonster url) ] [ text name ]
+
+viewMonster: Monster -> Html Msg
+viewMonster monster=
+ div [] [
+     h2 [] [text monster.name]
+     ,Html.h6 [] [text ("Size:"  ++ monster.size)]
+ ]
