@@ -10,8 +10,18 @@
 </head>
 <body>
 	<div id="content"></div>
-	<script> Elm.Main.init({
-        node: document.getElementById("content")
-    })</script>
+	<script> 
+	const key='test-data'
+	const storedState = localStorage.getItem(key);
+	// const startingState = storedState ? JSON.parse(storedState) : null;
+	const app=Elm.Main.init({
+		node: document.getElementById("content")
+		,flags: storedState
+	})
+	app.ports.storeData.subscribe(function(data) {
+		console.log("Data: ", JSON.stringify(data));
+		localStorage.setItem(key,data)
+    });
+	</script>
 </body>
 </html>

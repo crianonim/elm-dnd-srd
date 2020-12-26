@@ -1,17 +1,18 @@
 module Main exposing (main)
 
 import Browser
-import Dict
-import Html exposing (Attribute, Html, a, button, div, h1, hr, img, input, p, pre, text)
+import Dict exposing (Dict)
+import Html exposing (Attribute, Html, a, button, div, h1, h2, hr, img, input, p, pre, text)
 import Html.Attributes exposing (selected, src, value)
 import Html.Events exposing (onClick, onInput)
 import Http
 import Json.Decode exposing (Decoder, field, string)
+import Json.Encode as Encode
 import Platform.Cmd exposing (Cmd)
-import Html exposing (h2)
+import Ports
 
 
-main : Program () Model Msg
+main : Program (Maybe String) Model Msg
 main =
     Browser.element
         { init = init
@@ -25,9 +26,23 @@ toApi url =
     "https://www.dnd5eapi.co" ++ url
 
 
-init : () -> ( Model, Cmd Msg )
-init _ =
-    ( { monstersList = [], currentMonster = Nothing }
+init : Maybe String -> ( Model, Cmd Msg )
+init flags =
+    ( { monstersList = []
+      , currentMonster =
+            flags
+                |> Maybe.andThen
+                    (\v ->
+                        case Json.Decode.decodeString monsterDecoder v of
+                            Err _ ->
+                                Nothing
+
+                            Ok m ->
+                                Just m
+                    )
+      , cachedMonstersString = flags
+      , cachedMonsters = Dict.empty
+      }
     , Http.get
         { url = toApi "/api/monsters"
         , expect = Http.expectJson GotMonstersList monstersDecoder
@@ -68,12 +83,18 @@ update msg model =
                     ( model, Cmd.none )
 
                 Ok monster ->
-                    ( { model | currentMonster = Just monster }, Cmd.none )
+                    let
+                        newCached =
+                            Debug.log "NewLog" (Dict.insert monster.name monster model.cachedMonsters)
+                    in
+                    ( { model | currentMonster = Just monster, cachedMonsters = newCached }, saveData (Encode.encode 0 (monsterCacheEncode newCached)) )
 
 
 type alias Model =
     { monstersList : List MonsterHeader
     , currentMonster : Maybe Monster
+    , cachedMonstersString : Maybe String
+    , cachedMonsters : Dict String Monster
     }
 
 
@@ -117,6 +138,18 @@ monsterDecoder =
         (field "size" string)
 
 
+monsterEncode : Monster -> Encode.Value
+monsterEncode monster =
+    Encode.object
+        [ ( "name", Encode.string monster.name )
+        , ( "size", Encode.string monster.size )
+        ]
+
+
+monsterCacheEncode monsters =
+    Encode.dict identity monsterEncode monsters
+
+
 
 -- SUBSCRIPTIONS
 
@@ -134,7 +167,17 @@ view : Model -> Html Msg
 view model =
     div []
         [ div []
-            [ case model.currentMonster of
+            [ p []
+                [ text
+                    (case model.cachedMonstersString of
+                        Just x ->
+                            x
+
+                        Nothing ->
+                            "<< NO CACHE >>"
+                    )
+                ]
+            , case model.currentMonster of
                 Nothing ->
                     text "No monsters loaded..."
 
@@ -149,9 +192,15 @@ viewMonsterHeader : MonsterHeader -> Html Msg
 viewMonsterHeader { index, name, url } =
     p [ Html.Attributes.title index, onClick (GetMonster url) ] [ text name ]
 
-viewMonster: Monster -> Html Msg
-viewMonster monster=
- div [] [
-     h2 [] [text monster.name]
-     ,Html.h6 [] [text ("Size:"  ++ monster.size)]
- ]
+
+viewMonster : Monster -> Html Msg
+viewMonster monster =
+    div []
+        [ h2 [] [ text monster.name ]
+        , Html.h6 [] [ text ("Size:" ++ monster.size) ]
+        ]
+
+
+saveData : String -> Cmd msg
+saveData str =
+    Ports.storeData str
