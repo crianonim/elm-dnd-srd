@@ -2,9 +2,9 @@ module Main exposing (main)
 
 import Browser
 import Dict exposing (Dict)
-import Html exposing (Attribute, Html, a, button, div, h1, h2, hr, img, input, p, pre, text)
-import Html.Attributes exposing (selected, src, value)
-import Html.Events exposing (onClick, onInput)
+import Html exposing (Attribute, Html, div, h2, p, text)
+import Html.Attributes
+import Html.Events exposing (onClick)
 import Http
 import Json.Decode exposing (Decoder, field, string)
 import Json.Encode as Encode
