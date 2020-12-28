@@ -298,11 +298,11 @@ viewMonsterActions actions =
 
 viewMonsterAction : MonsterAction -> Html msg
 viewMonsterAction action =
-    div []
-        [ p [] [ text action.name ]
-        , p [] [ text action.desc ]
+    div [class "action"]
+        [ p [class "action-name"] [ text action.name ]
+        , p [class "action-description"] [ text action.desc ]
         , div [] (List.map viewDamage action.damage)
-        , p []
+        , p [ class "action-attack-bonus"]
             [ case action.attackBonus of
                 Just attackBonus ->
                     text ("Attack Bonus: " ++ String.fromInt attackBonus)
@@ -320,30 +320,30 @@ viewDamage damage =
 
 viewMonsterAbilities : Abilities -> Html msg
 viewMonsterAbilities abilities =
-    div []
+    div [class "abilities"]
         [ div []
-            [ text "Str"
-            , text (String.fromInt abilities.strength)
+            [ div [][text "Str"]
+            , div [][text (String.fromInt abilities.strength)]
             ]
         , div []
-            [ text "Dex"
-            , text (String.fromInt abilities.dexterity)
+            [ div [][text "Dex"]
+            , div [][text (String.fromInt abilities.dexterity)]
             ]
         , div []
-            [ text "Con"
-            , text (String.fromInt abilities.constitution)
+            [ div [][text "Con"]
+            , div [][text (String.fromInt abilities.constitution)]
             ]
         , div []
-            [ text "Int"
-            , text (String.fromInt abilities.intelligence)
+            [ div [][text "Int"]
+            , div [][text (String.fromInt abilities.intelligence)]
             ]
         , div []
-            [ text "Wis"
-            , text (String.fromInt abilities.wisdom)
+            [ div [][text "Wis"]
+            , div [][text (String.fromInt abilities.wisdom)]
             ]
         , div []
-            [ text "Cha"
-            , text (String.fromInt abilities.charisma)
+            [ div [][text "Cha"]
+            , div [][text (String.fromInt abilities.charisma)]
             ]
         ]
 
