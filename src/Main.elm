@@ -2,8 +2,8 @@ module Main exposing (main)
 
 import Browser
 import Dict exposing (Dict)
-import Html exposing (Attribute, Html, button, div, hr, input, p, text)
-import Html.Attributes exposing (checked, class, title, type_)
+import Html exposing (Attribute, Html, button, div, hr, input, label, p, text)
+import Html.Attributes exposing (checked, class, for, id, title, type_)
 import Html.Events exposing (onClick)
 import Http
 import Json.Decode exposing (Decoder, field, int, list, string)
@@ -37,6 +37,7 @@ init flags =
       , cachedMonsters = Dict.empty
       , rnd = []
       , favouriteMonsters = Set.fromList (Result.withDefault [] (Json.Decode.decodeString (Json.Decode.list string) flags))
+      , filterFavourite = False
       }
     , Http.get
         { url = toApi "/api/monsters"
@@ -101,6 +102,9 @@ update msg model =
             , saveData (Encode.encode 0 (monsterFaveEncode updatedFavouriteMonsters))
             )
 
+        ToggleFilterFavorite ->
+            ( { model | filterFavourite = not model.filterFavourite }, Cmd.none )
+
 
 type alias Model =
     { monstersList : List MonsterHeader
@@ -109,6 +113,7 @@ type alias Model =
     , cachedMonsters : Dict String Monster
     , rnd : List Float
     , favouriteMonsters : Set String
+    , filterFavourite : Bool
     }
 
 
@@ -166,6 +171,7 @@ type Msg
     | InitRandom
     | GotRandom (List Float)
     | ToggleMonsterFave String Bool
+    | ToggleFilterFavorite
 
 
 monstersDecoder : Decoder (List MonsterHeader)
@@ -244,6 +250,19 @@ monsterFaveEncode faves =
     Encode.set Encode.string faves
 
 
+filterMonsterList : Model -> List MonsterHeader
+filterMonsterList model =
+    List.filter
+        (\m ->
+            if model.filterFavourite then
+                Set.member m.index model.favouriteMonsters
+
+            else
+                True
+        )
+        model.monstersList
+
+
 
 -- SUBSCRIPTIONS
 
@@ -262,7 +281,13 @@ view model =
     div []
         [ div []
             [ div [ class "monster-browser" ]
-                [ div [ class "monster-list" ] (List.map (\m -> viewMonsterHeader (Set.member m.index model.favouriteMonsters) m) model.monstersList)
+                [ div [ class "monster-list" ]
+                    [ div [ class "filter" ]
+                        [ input [ id "filter-fave", type_ "checkbox", checked model.filterFavourite, onClick ToggleFilterFavorite ] []
+                        , label [ for "filter-fave" ] [ text "Favourite Only" ]
+                        ]
+                    , div [] (List.map (\m -> viewMonsterHeader (Set.member m.index model.favouriteMonsters) m) (filterMonsterList model))
+                    ]
                 , div [ class "current-monster" ]
                     [ case model.currentMonster of
                         Nothing ->
