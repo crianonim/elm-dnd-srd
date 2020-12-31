@@ -38,3 +38,7 @@ body {
 .monster-browser .monster-list {
   width: 40%;
 }
+
+.monster-header {
+  display: flex;
+}

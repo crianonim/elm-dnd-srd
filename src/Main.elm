@@ -2,8 +2,8 @@ module Main exposing (main)
 
 import Browser
 import Dict exposing (Dict)
-import Html exposing (Attribute, Html, button, div, hr, p, text)
-import Html.Attributes exposing (class, title)
+import Html exposing (Attribute, Html, button, div, hr, input, p, text)
+import Html.Attributes exposing (checked, class, title, type_)
 import Html.Events exposing (onClick)
 import Http
 import Json.Decode exposing (Decoder, field, int, list, string)
@@ -11,9 +11,10 @@ import Json.Encode as Encode
 import Platform.Cmd exposing (Cmd)
 import Ports
 import Random
+import Set exposing (Set)
 
 
-main : Program (Maybe String) Model Msg
+main : Program String Model Msg
 main =
     Browser.element
         { init = init
@@ -28,23 +29,14 @@ toApi url =
     "https://www.dnd5eapi.co" ++ url
 
 
-init : Maybe String -> ( Model, Cmd Msg )
+init : String -> ( Model, Cmd Msg )
 init flags =
     ( { monstersList = []
-      , currentMonster =
-            flags
-                |> Maybe.andThen
-                    (\v ->
-                        case Json.Decode.decodeString monsterDecoder v of
-                            Err _ ->
-                                Nothing
-
-                            Ok m ->
-                                Just m
-                    )
-      , cachedMonstersString = flags
+      , currentMonster = Nothing
+      , cachedMonstersString = Nothing
       , cachedMonsters = Dict.empty
       , rnd = []
+      , favouriteMonsters = Set.fromList (Result.withDefault [] (Json.Decode.decodeString (Json.Decode.list string) flags))
       }
     , Http.get
         { url = toApi "/api/monsters"
@@ -94,6 +86,21 @@ update msg model =
         GotRandom list ->
             ( { model | rnd = list }, Cmd.none )
 
+        ToggleMonsterFave index isFavorited ->
+            let
+                updatedFavouriteMonsters =
+                    if isFavorited then
+                        Set.remove index model.favouriteMonsters
+
+                    else
+                        Set.insert index model.favouriteMonsters
+            in
+            ( { model
+                | favouriteMonsters = updatedFavouriteMonsters
+              }
+            , saveData (Encode.encode 0 (monsterFaveEncode updatedFavouriteMonsters))
+            )
+
 
 type alias Model =
     { monstersList : List MonsterHeader
@@ -101,6 +108,7 @@ type alias Model =
     , cachedMonstersString : Maybe String
     , cachedMonsters : Dict String Monster
     , rnd : List Float
+    , favouriteMonsters : Set String
     }
 
 
@@ -157,6 +165,7 @@ type Msg
     | GotMonster (Result Http.Error Monster)
     | InitRandom
     | GotRandom (List Float)
+    | ToggleMonsterFave String Bool
 
 
 monstersDecoder : Decoder (List MonsterHeader)
@@ -230,6 +239,11 @@ monsterCacheEncode monsters =
     Encode.dict identity monsterEncode monsters
 
 
+monsterFaveEncode : Set String -> Encode.Value
+monsterFaveEncode faves =
+    Encode.set Encode.string faves
+
+
 
 -- SUBSCRIPTIONS
 
@@ -248,7 +262,7 @@ view model =
     div []
         [ div []
             [ div [ class "monster-browser" ]
-                [ div [ class "monster-list" ] (List.map viewMonsterHeader model.monstersList)
+                [ div [ class "monster-list" ] (List.map (\m -> viewMonsterHeader (Set.member m.index model.favouriteMonsters) m) model.monstersList)
                 , div [ class "current-monster" ]
                     [ case model.currentMonster of
                         Nothing ->
@@ -273,9 +287,14 @@ view model =
         ]
 
 
-viewMonsterHeader : MonsterHeader -> Html Msg
-viewMonsterHeader { index, name, url } =
-    p [ title index, onClick (GetMonster url) ] [ text name ]
+viewMonsterHeader : Bool -> MonsterHeader -> Html Msg
+viewMonsterHeader isFavorited { index, name, url } =
+    div [ title index, class "monster-header" ]
+        [ input [ type_ "checkbox", checked isFavorited, onClick (ToggleMonsterFave index isFavorited) ] []
+        , div
+            [ onClick (GetMonster url) ]
+            [ text name ]
+        ]
 
 
 viewMonster : Monster -> Html Msg
