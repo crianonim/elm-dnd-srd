@@ -2,9 +2,9 @@ module Main exposing (main)
 
 import Browser
 import Dict exposing (Dict)
-import Html exposing (Attribute, Html, button, div, hr, input, label, p, text)
-import Html.Attributes exposing (checked, class, for, id, title, type_)
-import Html.Events exposing (onClick)
+import Html exposing (Attribute, Html, button, div, hr, input, label, p, span, text)
+import Html.Attributes exposing (checked, class, for, id, title, type_, value)
+import Html.Events exposing (onClick, onInput)
 import Http
 import Json.Decode exposing (Decoder, field, int, list, string)
 import Json.Encode as Encode
@@ -38,6 +38,7 @@ init flags =
       , rnd = []
       , favouriteMonsters = Set.fromList (Result.withDefault [] (Json.Decode.decodeString (Json.Decode.list string) flags))
       , filterFavourite = False
+      , filterString = ""
       }
     , Http.get
         { url = toApi "/api/monsters"
@@ -67,11 +68,7 @@ update msg model =
 
         GotMonster result ->
             case result of
-                Err x ->
-                    let
-                        y =
-                            Debug.log "Errr" x
-                    in
+                Err _ ->
                     ( model, Cmd.none )
 
                 Ok monster ->
@@ -79,7 +76,7 @@ update msg model =
                         newCached =
                             Debug.log "NewLog" (Dict.insert monster.name monster model.cachedMonsters)
                     in
-                    ( { model | currentMonster = Just monster, cachedMonsters = newCached }, saveData (Encode.encode 0 (monsterCacheEncode newCached)) )
+                    ( { model | currentMonster = Just monster, cachedMonsters = newCached }, Cmd.none )
 
         InitRandom ->
             ( model, Random.generate GotRandom (Random.list 10000 (Random.float 0 1)) )
@@ -105,6 +102,9 @@ update msg model =
         ToggleFilterFavorite ->
             ( { model | filterFavourite = not model.filterFavourite }, Cmd.none )
 
+        UpdateFilter filter ->
+            ( { model | filterString = filter }, Cmd.none )
+
 
 type alias Model =
     { monstersList : List MonsterHeader
@@ -114,6 +114,7 @@ type alias Model =
     , rnd : List Float
     , favouriteMonsters : Set String
     , filterFavourite : Bool
+    , filterString : String
     }
 
 
@@ -172,6 +173,7 @@ type Msg
     | GotRandom (List Float)
     | ToggleMonsterFave String Bool
     | ToggleFilterFavorite
+    | UpdateFilter String
 
 
 monstersDecoder : Decoder (List MonsterHeader)
@@ -254,11 +256,13 @@ filterMonsterList : Model -> List MonsterHeader
 filterMonsterList model =
     List.filter
         (\m ->
-            if model.filterFavourite then
-                Set.member m.index model.favouriteMonsters
+            String.contains (String.toLower model.filterString) (String.toLower m.index)
+                && (if model.filterFavourite then
+                        Set.member m.index model.favouriteMonsters
 
-            else
-                True
+                    else
+                        True
+                   )
         )
         model.monstersList
 
@@ -282,10 +286,7 @@ view model =
         [ div []
             [ div [ class "monster-browser" ]
                 [ div [ class "monster-list" ]
-                    [ div [ class "filter" ]
-                        [ input [ id "filter-fave", type_ "checkbox", checked model.filterFavourite, onClick ToggleFilterFavorite ] []
-                        , label [ for "filter-fave" ] [ text "Favourite Only" ]
-                        ]
+                    [ viewFilterMonster model
                     , div [] (List.map (\m -> viewMonsterHeader (Set.member m.index model.favouriteMonsters) m) (filterMonsterList model))
                     ]
                 , div [ class "current-monster" ]
@@ -312,10 +313,35 @@ view model =
         ]
 
 
+viewFilterMonster : { a | filterFavourite : Bool, filterString : String } -> Html Msg
+viewFilterMonster { filterFavourite, filterString } =
+    div [ class "filter" ]
+        [ span [ onClick ToggleFilterFavorite, class "star" ]
+            [ text
+                (if filterFavourite then
+                    "★"
+
+                 else
+                    "☆"
+                )
+            ]
+        , input [ id "filter-string", value filterString, type_ "search", onInput UpdateFilter ]
+            []
+        ]
+
+
 viewMonsterHeader : Bool -> MonsterHeader -> Html Msg
 viewMonsterHeader isFavorited { index, name, url } =
     div [ title index, class "monster-header" ]
-        [ input [ type_ "checkbox", checked isFavorited, onClick (ToggleMonsterFave index isFavorited) ] []
+        [ span [ onClick (ToggleMonsterFave index isFavorited), class "star" ]
+            [ text
+                (if isFavorited then
+                    "★"
+
+                 else
+                    "☆"
+                )
+            ]
         , div
             [ onClick (GetMonster url) ]
             [ text name ]

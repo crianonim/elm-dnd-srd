@@ -5,6 +5,7 @@ body {
   padding: 1em;
   width: 50%;
   border: 3px solid black;
+  background-image: url(https://s3.amazonaws.com/files.d20.io/images/105716505/oymO0pnVyLCv-tQDw2vddA/med.png);
 }
 .action {
   margin: 5px;
@@ -37,8 +38,19 @@ body {
 
 .monster-browser .monster-list {
   width: 40%;
+  font-size: 90%;
 }
 
 .monster-header {
   display: flex;
+  align-items: center;
+}
+
+.star {
+  width: 1.5em;
+}
+
+.filter {
+  display: flex;
+  margin-bottom: 1em;
 }
