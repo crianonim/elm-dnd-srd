@@ -1,29 +1,40 @@
 body {
- font-family: sans-serif;
+  font-family: sans-serif;
 }
 .monster {
- padding:1em;
- width:50%;
- border: 3px solid black;
+  padding: 1em;
+  width: 50%;
+  border: 3px solid black;
 }
 .action {
- margin: 5px;
- background-color: #eee;
- padding: 1em;
+  margin: 5px;
+  background-color: #eee;
+  padding: 1em;
 }
 .action-name {
- size: 1.2rem;
- font-weight: bold;
+  size: 1.2rem;
+  font-weight: bold;
 }
 .abilities {
- display:flex;
- justify-content: space-around;
- 
+  display: flex;
+  justify-content: space-around;
 }
 
 .abilities > div {
-display:flex;
-flex-direction: column;
-align-items: center;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
 
+.monster-browser {
+  display: flex;
+}
+.monster-browser .monster-list {
+  width: 40%;
+  max-height: 100vh;
+  overflow-y: scroll;
+}
+
+.monster-browser .monster-list {
+  width: 40%;
 }

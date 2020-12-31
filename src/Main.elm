@@ -23,6 +23,7 @@ main =
         }
 
 
+toApi : String -> String
 toApi url =
     "https://www.dnd5eapi.co" ++ url
 
@@ -56,12 +57,8 @@ update : Msg -> Model -> ( Model, Cmd Msg )
 update msg model =
     case msg of
         GotMonstersList result ->
-            case result of
+            case Debug.log "RESULT" result of
                 Err x ->
-                    let
-                        y =
-                            Debug.log "Errr" x
-                    in
                     ( model, Cmd.none )
 
                 Ok monstersList ->
@@ -228,6 +225,7 @@ monsterEncode monster =
         ]
 
 
+monsterCacheEncode : Dict String Monster -> Encode.Value
 monsterCacheEncode monsters =
     Encode.dict identity monsterEncode monsters
 
@@ -249,24 +247,28 @@ view : Model -> Html Msg
 view model =
     div []
         [ div []
-            [ button [ onClick InitRandom ] [ text "Init rnd" ]
-            , p []
-                [ text
-                    (case model.cachedMonstersString of
-                        Just x ->
-                            x
-
+            [ div [ class "monster-browser" ]
+                [ div [ class "monster-list" ] (List.map viewMonsterHeader model.monstersList)
+                , div [ class "current-monster" ]
+                    [ case model.currentMonster of
                         Nothing ->
-                            "<< NO CACHE >>"
-                    )
-                ]
-            , case model.currentMonster of
-                Nothing ->
-                    text "No monsters loaded..."
+                            text "No monsters loaded..."
 
-                Just monster ->
-                    viewMonster monster
-            , div [] (List.map viewMonsterHeader model.monstersList)
+                        Just monster ->
+                            viewMonster monster
+                    ]
+                ]
+            ]
+        , button [ onClick InitRandom ] [ text "Init rnd" ]
+        , p []
+            [ text
+                (case model.cachedMonstersString of
+                    Just x ->
+                        x
+
+                    Nothing ->
+                        "<< NO CACHE >>"
+                )
             ]
         ]
 
@@ -298,11 +300,11 @@ viewMonsterActions actions =
 
 viewMonsterAction : MonsterAction -> Html msg
 viewMonsterAction action =
-    div [class "action"]
-        [ p [class "action-name"] [ text action.name ]
-        , p [class "action-description"] [ text action.desc ]
+    div [ class "action" ]
+        [ p [ class "action-name" ] [ text action.name ]
+        , p [ class "action-description" ] [ text action.desc ]
         , div [] (List.map viewDamage action.damage)
-        , p [ class "action-attack-bonus"]
+        , p [ class "action-attack-bonus" ]
             [ case action.attackBonus of
                 Just attackBonus ->
                     text ("Attack Bonus: " ++ String.fromInt attackBonus)
@@ -320,30 +322,30 @@ viewDamage damage =
 
 viewMonsterAbilities : Abilities -> Html msg
 viewMonsterAbilities abilities =
-    div [class "abilities"]
+    div [ class "abilities" ]
         [ div []
-            [ div [][text "Str"]
-            , div [][text (String.fromInt abilities.strength)]
+            [ div [] [ text "Str" ]
+            , div [] [ text (String.fromInt abilities.strength) ]
             ]
         , div []
-            [ div [][text "Dex"]
-            , div [][text (String.fromInt abilities.dexterity)]
+            [ div [] [ text "Dex" ]
+            , div [] [ text (String.fromInt abilities.dexterity) ]
             ]
         , div []
-            [ div [][text "Con"]
-            , div [][text (String.fromInt abilities.constitution)]
+            [ div [] [ text "Con" ]
+            , div [] [ text (String.fromInt abilities.constitution) ]
             ]
         , div []
-            [ div [][text "Int"]
-            , div [][text (String.fromInt abilities.intelligence)]
+            [ div [] [ text "Int" ]
+            , div [] [ text (String.fromInt abilities.intelligence) ]
             ]
         , div []
-            [ div [][text "Wis"]
-            , div [][text (String.fromInt abilities.wisdom)]
+            [ div [] [ text "Wis" ]
+            , div [] [ text (String.fromInt abilities.wisdom) ]
             ]
         , div []
-            [ div [][text "Cha"]
-            , div [][text (String.fromInt abilities.charisma)]
+            [ div [] [ text "Cha" ]
+            , div [] [ text (String.fromInt abilities.charisma) ]
             ]
         ]
 

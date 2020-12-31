@@ -1,3 +1,3 @@
-port module Ports exposing (..)
+port module Ports exposing (storeData)
 
 port storeData : String -> Cmd msg
