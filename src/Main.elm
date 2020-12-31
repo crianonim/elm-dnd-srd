@@ -2,8 +2,8 @@ module Main exposing (main)
 
 import Browser
 import Dict exposing (Dict)
-import Html exposing (Attribute, Html, button, div, hr, input, label, p, span, text)
-import Html.Attributes exposing (checked, class, for, id, title, type_, value)
+import Html exposing (Attribute, Html, button, div, h2, hr, input, label, p, span, text)
+import Html.Attributes exposing (checked, class, disabled, for, id, title, type_, value)
 import Html.Events exposing (onClick, onInput)
 import Http
 import Json.Decode exposing (Decoder, field, int, list, string)
@@ -39,6 +39,8 @@ init flags =
       , favouriteMonsters = Set.fromList (Result.withDefault [] (Json.Decode.decodeString (Json.Decode.list string) flags))
       , filterFavourite = False
       , filterString = ""
+      , arenaHome = []
+      , arenaAway = []
       }
     , Http.get
         { url = toApi "/api/monsters"
@@ -105,6 +107,19 @@ update msg model =
         UpdateFilter filter ->
             ( { model | filterString = filter }, Cmd.none )
 
+        AddToArena team ->
+            case model.currentMonster of
+                Nothing ->
+                    ( model, Cmd.none )
+
+                Just monster ->
+                    case team of
+                        Home ->
+                            ( { model | arenaHome = model.arenaHome ++ [ monster ] }, Cmd.none )
+
+                        Away ->
+                            ( { model | arenaAway = model.arenaAway ++ [ monster ] }, Cmd.none )
+
 
 type alias Model =
     { monstersList : List MonsterHeader
@@ -115,6 +130,8 @@ type alias Model =
     , favouriteMonsters : Set String
     , filterFavourite : Bool
     , filterString : String
+    , arenaHome : List Monster
+    , arenaAway : List Monster
     }
 
 
@@ -174,6 +191,12 @@ type Msg
     | ToggleMonsterFave String Bool
     | ToggleFilterFavorite
     | UpdateFilter String
+    | AddToArena Team
+
+
+type Team
+    = Home
+    | Away
 
 
 monstersDecoder : Decoder (List MonsterHeader)
@@ -297,18 +320,8 @@ view model =
                         Just monster ->
                             viewMonster monster
                     ]
+                , viewArenaSelection model
                 ]
-            ]
-        , button [ onClick InitRandom ] [ text "Init rnd" ]
-        , p []
-            [ text
-                (case model.cachedMonstersString of
-                    Just x ->
-                        x
-
-                    Nothing ->
-                        "<< NO CACHE >>"
-                )
             ]
         ]
 
@@ -420,6 +433,41 @@ viewMonsterAbilities abilities =
         ]
 
 
+viewArenaSelection : Model -> Html Msg
+viewArenaSelection model =
+    div [ class "arena-selection" ]
+        [ h2 [] [ text "Arena Selection" ]
+        , div [ class "arena-teams" ]
+            [ viewArenaTeam Home model.arenaHome (maybeToBool model.currentMonster)
+            , viewArenaTeam Away model.arenaAway (maybeToBool model.currentMonster)
+            ]
+        ]
+
+
+viewArenaTeam : Team -> List Monster -> Bool -> Html Msg
+viewArenaTeam team monsters canAdd =
+    div [ class "arena-team" ]
+        [ button [ onClick (AddToArena team), disabled (not canAdd) ]
+            [ text "Add to Team!" ]
+        , div
+            []
+            (List.map
+                (\m -> text m.name)
+                monsters
+            )
+        ]
+
+
 saveData : String -> Cmd msg
 saveData str =
     Ports.storeData str
+
+
+maybeToBool : Maybe a -> Bool
+maybeToBool m =
+    case m of
+        Just _ ->
+            True
+
+        Nothing ->
+            False

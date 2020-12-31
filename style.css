@@ -3,7 +3,7 @@ body {
 }
 .monster {
   padding: 1em;
-  width: 50%;
+
   border: 3px solid black;
   background-image: url(https://s3.amazonaws.com/files.d20.io/images/105716505/oymO0pnVyLCv-tQDw2vddA/med.png);
 }
@@ -29,21 +29,38 @@ body {
 
 .monster-browser {
   display: flex;
+  justify-content: space-between;
 }
 .monster-browser .monster-list {
-  width: 40%;
+  min-width: 20%;
   max-height: 100vh;
   overflow-y: scroll;
 }
 
-.monster-browser .monster-list {
-  width: 40%;
+.monster-browser .current-monster {
+  min-width: 40%;
   font-size: 90%;
+  max-height: 100vh;
+  overflow-y: scroll;
 }
-
+.monster-browser .arena-selection {
+  min-width: 40%;
+  border: 1px solid black;
+  max-height: 100vh;
+  overflow-y: scroll;
+}
 .monster-header {
   display: flex;
   align-items: center;
+}
+
+.arena-teams {
+  display: flex;
+  justify-content: space-between;
+}
+.arena-team {
+  width: 45%;
+  border: 1px solid;
 }
 
 .star {
