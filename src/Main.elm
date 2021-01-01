@@ -1,8 +1,8 @@
-module Main exposing (main)
+module Main exposing (..)
 
 import Browser
 import Dict exposing (Dict)
-import Html exposing (Attribute, Html, button, div, h2, hr, input, label, p, span, text)
+import Html exposing (Attribute, Html, button, div, h2, h3, h4, hr, input, label, p, span, text)
 import Html.Attributes exposing (checked, class, disabled, for, id, title, type_, value)
 import Html.Events exposing (onClick, onInput)
 import Http
@@ -147,6 +147,7 @@ type alias Monster =
     , size : String
     , abilities : Abilities
     , alignment : String
+    , xp : Int
     , armorClass : Int
     , hitPoints : Int
     , actions : List MonsterAction
@@ -199,6 +200,10 @@ type Team
     | Away
 
 
+
+-- DECODERS
+
+
 monstersDecoder : Decoder (List MonsterHeader)
 monstersDecoder =
     field "results"
@@ -215,11 +220,12 @@ monsterHeaderDecoder =
 
 monsterDecoder : Decoder Monster
 monsterDecoder =
-    Json.Decode.map7 Monster
+    Json.Decode.map8 Monster
         (field "name" string)
         (field "size" string)
         monsterAbilitiesDecoder
         (field "alignment" string)
+        (field "xp" int)
         (field "armor_class" int)
         (field "hit_points" int)
         (field "actions" (list actionDecoder))
@@ -257,6 +263,10 @@ damageTypeDecoder =
     Json.Decode.map DamageType (field "index" string)
 
 
+
+-- ENCODERS
+
+
 monsterEncode : Monster -> Encode.Value
 monsterEncode monster =
     Encode.object
@@ -273,21 +283,6 @@ monsterCacheEncode monsters =
 monsterFaveEncode : Set String -> Encode.Value
 monsterFaveEncode faves =
     Encode.set Encode.string faves
-
-
-filterMonsterList : Model -> List MonsterHeader
-filterMonsterList model =
-    List.filter
-        (\m ->
-            String.contains (String.toLower model.filterString) (String.toLower m.index)
-                && (if model.filterFavourite then
-                        Set.member m.index model.favouriteMonsters
-
-                    else
-                        True
-                   )
-        )
-        model.monstersList
 
 
 
@@ -370,6 +365,7 @@ viewMonster monster =
         , hr [] []
         , p [] [ text ("Armor Class: " ++ String.fromInt monster.armorClass) ]
         , p [] [ text ("Hit Points: " ++ String.fromInt monster.hitPoints) ]
+        , p [] [ text ("XP: " ++ String.fromInt monster.xp) ]
         , hr [] []
         , div [] [ viewMonsterAbilities monster.abilities ]
         , div [] [ viewMonsterActions monster.actions ]
@@ -435,20 +431,37 @@ viewMonsterAbilities abilities =
 
 viewArenaSelection : Model -> Html Msg
 viewArenaSelection model =
+    let
+        homeCost =
+            calculateTeamXPCost model.arenaHome
+
+        awayCost =
+            calculateTeamXPCost model.arenaAway
+
+        proportion =
+            calculateRelativeCost homeCost awayCost
+    in
     div [ class "arena-selection" ]
         [ h2 [] [ text "Arena Selection" ]
         , div [ class "arena-teams" ]
-            [ viewArenaTeam Home model.arenaHome (maybeToBool model.currentMonster)
-            , viewArenaTeam Away model.arenaAway (maybeToBool model.currentMonster)
+            [ viewArenaTeam Home model.arenaHome (maybeToBool model.currentMonster) homeCost (Maybe.andThen (Just << proportionToPercentageString << Tuple.first) proportion)
+            , viewArenaTeam Away model.arenaAway (maybeToBool model.currentMonster) awayCost (Maybe.andThen (Just << proportionToPercentageString << Tuple.second) proportion)
             ]
         ]
 
 
-viewArenaTeam : Team -> List Monster -> Bool -> Html Msg
-viewArenaTeam team monsters canAdd =
+viewArenaTeam : Team -> List Monster -> Bool -> Int -> Maybe String -> Html Msg
+viewArenaTeam team monsters canAdd cost proportionString =
     div [ class "arena-team" ]
-        [ button [ onClick (AddToArena team), disabled (not canAdd) ]
-            [ text "Add to Team!" ]
+        [ h3 [] [ text ("Team XP Cost: " ++ String.fromInt cost) ]
+        , case proportionString of
+            Nothing ->
+                text ""
+
+            Just s ->
+                h4 [] [ text (s ++ " % of the other team.") ]
+        , button [ onClick (AddToArena team), disabled (not canAdd) ]
+            [ text "Add displayed to Team!" ]
         , div
             []
             (List.map
@@ -471,3 +484,44 @@ maybeToBool m =
 
         Nothing ->
             False
+
+
+filterMonsterList : Model -> List MonsterHeader
+filterMonsterList model =
+    List.filter
+        (\m ->
+            String.contains (String.toLower model.filterString) (String.toLower m.index)
+                && (if model.filterFavourite then
+                        Set.member m.index model.favouriteMonsters
+
+                    else
+                        True
+                   )
+        )
+        model.monstersList
+
+
+calculateTeamXPCost : List Monster -> Int
+calculateTeamXPCost monsters =
+    List.foldl (\m sum -> m.xp + sum) 0 monsters
+
+
+calculateRelativeCost : Int -> Int -> Maybe ( Float, Float )
+calculateRelativeCost t1 t2 =
+    if t1 == 0 || t2 == 0 then
+        Nothing
+
+    else
+        let
+            t1_ =
+                toFloat t1
+
+            t2_ =
+                toFloat t2
+        in
+        Just ( t1_ / t2_, t2_ / t1_ )
+
+
+proportionToPercentageString : Float -> String
+proportionToPercentageString p =
+    round (p * 100) |> String.fromInt
